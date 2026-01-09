@@ -1,0 +1,13 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ],
+  "compilerOptions": {
+    /* Repita o path aqui para o CLI do Shadcn encontrar na raiz */
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}

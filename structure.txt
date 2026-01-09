@@ -1,0 +1,56 @@
+
+C:\Users\simia\Desktop\portfolio-projects\auth-frontend-vite
+├── .env
+├── .gitignore
+├── .vscode
+|  └── settings.json
+├── components.json
+├── eslint.config.js
+├── index.html
+├── package.json
+├── pnpm-lock.yaml
+├── README.md
+├── src
+|  ├── api
+|  |  └── axios.ts
+|  ├── App.css
+|  ├── App.tsx
+|  ├── assets
+|  |  └── react.svg
+|  ├── components
+|  |  ├── ConfirmEmailView.tsx
+|  |  ├── LoginView.tsx
+|  |  ├── ui
+|  |  |  ├── button.tsx
+|  |  |  ├── card.tsx
+|  |  |  ├── input.tsx
+|  |  |  └── label.tsx
+|  |  └── Waves.tsx
+|  ├── context
+|  |  ├── AuthContext.tsx
+|  |  └── AuthProvider.tsx
+|  ├── hooks
+|  |  └── useAuth.ts
+|  ├── index.css
+|  ├── lib
+|  |  └── utils.ts
+|  ├── main.tsx
+|  ├── pages
+|  |  ├── ConfirmEmailPage.tsx
+|  |  ├── DashboardPage.tsx
+|  |  └── LoginPage.tsx
+|  ├── types
+|  |  └── auth.ts
+|  └── vite-env.d.ts
+├── structure.txt
+├── tsconfig.app.json
+├── tsconfig.json
+├── tsconfig.node.json
+└── vite.config.ts
+
+directory: 575 file: 157 symboliclink: 504
+
+ignored: directory (253), file (1), symboliclink (17)
+
+
+[2K[1G
