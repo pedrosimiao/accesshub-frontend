@@ -30,45 +30,84 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    // lista de dependências vazia no useEffect => executa de refreshUser na montagem do app
-    // verifica a session
-    // atualiza o estado global
     useEffect(() => {
-        refreshUser();
+        const initialize = async () => {
+            try {
+                // plantar o cookie no navegador e resolver o "CSRF Missing"
+                await api.get('/api/v1/auth/csrf/');
+                // verifica a sessão
+                await refreshUser();
+            } catch (error) {
+                console.error("Falha na inicialização de segurança:", error);
+                setUser(null);
+                setLoading(false);
+            }
+        };
+
+        initialize();
     }, []);
 
 
     // Login
     const login = async (credentials: LoginPayload) => {
-        // cria sessão no backend com as credenciais tipadas
-        // chamada de POST para o endpoint de login da API
-        await api.post('/api/v1/auth/login/', credentials);
-        await refreshUser();
+        try {
+            await api.post('/api/v1/auth/login/', credentials);
+            await refreshUser();
+        } catch (err: unknown) {
+            if (err instanceof AxiosError) {
+                // Se o backend retornar 403, lança exceção customizada
+                if (err.response?.status === 403) {
+                    throw new Error("USER_INACTIVE");
+                }
+            }
+            throw err;
+        }
     };
+
+
+    // Verify Email
+    const verifyEmail = async (otpCode: string) => {
+        try {
+            // Ajustado para o seu novo endpoint manual e campo 'code'
+            await api.post('/api/v1/auth/verify-email/', { code: otpCode });
+
+            // Após ativar, limpamos o usuário para garantir que ele faça o login manual
+            setUser(null);
+        } catch (err: unknown) {
+            const error = err as AxiosError<DjangoAuthError>;
+            console.error("Erro na Verificação OTP:", error.response?.data);
+            throw error;
+        }
+    };
+
+
 
     // Signup
     const signup = async (credentials: RegisterPayload) => {
-    const payload = {
-        email: credentials.email,
-        password1: credentials.password,
-        password2: credentials.password,
+        const payload = {
+            email: credentials.email,
+            password1: credentials.password,
+            password2: credentials.password,
+        };
+
+        try {
+            // chamada de POST no endpoint de registro via axios.ts (CSRF e BaseURL automáticos)
+            await api.post('/api/v1/auth/registration/', payload);
+
+            setUser(null);
+
+        } catch (err) {
+            const error = err as AxiosError<DjangoAuthError>;
+            console.error("Erro no Registro:", error.response?.data);
+            throw error;
+        }
     };
 
-    try {
-        // chamada de POST no endpoint de registro via axios.ts (CSRF e BaseURL automáticos)
-        await api.post('/api/v1/auth/registration/', payload);
-    } catch (err) {
-        const error = err as AxiosError<DjangoAuthError>;
 
-        if (error.response?.data) {
-            console.error("Erro no Registro:", error.response.data);
-        }
-        
-        throw error;
-    }
-};
 
     // Logout
+    // src/context/AuthProvider.tsx
+
     const logout = async () => {
         try {
             await api.post('/api/v1/auth/logout/');
@@ -78,8 +117,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, signup, logout, refreshUser }}>
+        <AuthContext.Provider value={{ user, loading, login, signup, logout, refreshUser, verifyEmail }}>
             {children}
         </AuthContext.Provider>
     );

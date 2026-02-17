@@ -63,31 +63,58 @@ export function LoginView() {
 
     try {
       if (isLogin) {
+        // tenta logar
         await login({ email: data.email, password: data.password });
         navigate('/dashboard');
       } else {
-        // CADASTRO MANUAL
+        // tenta cadastrar
         await signup({ email: data.email, password: data.password });
-
-        // FEEDBACK DE SUCESSO
-        setSuccessMessage("Verifique seu e-mail para confirmar o cadastro!");
-        setIsLogin(true); // Retorna para o modo login
-        reset(); // Limpa campos
+        // se signup for 201 (Sucesso), o usuário foi criado (is_active=false)
+        setSuccessMessage("Conta criada! Verifique seu e-mail.");
+        setTimeout(() => navigate('/confirm-email'), 2000);
       }
-    } catch (err) {
-      const axiosError = err as AxiosError<{ detail?: string; email?: string[] }>;
-      let message = "Erro ao processar. Verifique os dados.";
-
-      if (axiosError.response?.status === 400 && axiosError.response?.data?.email) {
-        message = "Este e-mail já está em uso.";
-      } else if (axiosError.response?.data?.detail) {
-        message = axiosError.response.data.detail;
+    } catch (err: unknown) {
+      // CAPTURA ERRO CUSTOMIZADO (USER_INACTIVE)
+      // erro lançado pelo AuthProvider quando o login falha com 403
+      if (err instanceof Error && err.message === "USER_INACTIVE") {
+        setServerError("Sua conta ainda não foi ativada. Redirecionando para confirmação...");
+        setTimeout(() => navigate('/confirm-email'), 2000);
+        return;
       }
-      setServerError(message);
+
+      // CAPTURA ERROS DO AXIOS (ERROS DE VALIDAÇÃO DO DJANGO)
+      if (err instanceof AxiosError) {
+        // Tipagem para acessar o objeto de erro do Django
+        const axiosError = err as AxiosError<{ email?: string[]; detail?: string }>;
+        const responseData = axiosError.response?.data;
+
+        if (axiosError.response?.status === 400) {
+          // check se o Django enviou erro especificamente no campo 'email'
+          if (responseData?.email && responseData.email.length > 0) {
+            const emailMsg = responseData.email[0];
+
+            // se a mensagem contiver termos de duplicidade (padrão do Allauth/DRF)
+            if (emailMsg.includes("already exists") || emailMsg.includes("já está em uso")) {
+              setServerError("Este e-mail já está cadastrado. Tente fazer login.");
+            } else {
+              setServerError(emailMsg); // outros erros de e-mail (ex: formato)
+            }
+          }
+          // se for erro geral de validação
+          else if (responseData?.detail) {
+            setServerError(responseData.detail);
+          }
+        } else if (axiosError.response?.status === 401) {
+          setServerError("E-mail ou senha incorretos.");
+        } else {
+          setServerError("Ocorreu um erro no servidor. Tente novamente.");
+      }
+    }
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   const backendUrl = import.meta.env.VITE_API_URL;
   const frontendUrl = import.meta.env.VITE_FRONTEND_URL;

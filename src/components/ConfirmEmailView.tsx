@@ -1,121 +1,102 @@
 // src/components/ConfirmEmailView.tsx
 
-import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { AxiosError } from 'axios';
+import { Loader2, CheckCircle2 } from 'lucide-react';
 
-import api from '../api/axios';
-
-// Shadcn UI 
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export function ConfirmEmailView() {
-    const { key } = useParams(); // captura da chave da URL enviada pelo Django
-    const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+    const navigate = useNavigate();
+    const { verifyEmail } = useAuth();
 
-    useEffect(() => {
-        const verifyEmail = async () => {
-            if (!key) {
-                setStatus('error');
-                return;
+    const [code, setCode] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+    const onSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (code.length < 6) return;
+
+        setIsSubmitting(true);
+        setErrorMessage(null);
+
+        try {
+            await verifyEmail(code); // envia { code } para o novo endpoint
+            setStatus('success');
+
+            // redirecionar para /login e não para /dashboard.
+            // user agora é is_active=True, o login funciona
+            setTimeout(() => navigate('/login'), 2500);
+
+        } catch (err: unknown) {
+            if (err instanceof AxiosError) {
+                const axiosError = err as AxiosError<{ detail?: string }>;
+                setErrorMessage(axiosError.response?.data?.detail || "Código inválido ou expirado.");
+            } else {
+                setErrorMessage("Ocorreu um erro inesperado.");
             }
-
-            try {
-                // Endpoint padrão do dj-rest-auth para verificação
-                await api.post('/api/v1/auth/registration/verify-email/', { key });
-                setStatus('success');
-            } catch (error) {
-                console.error("Erro na verificação de e-mail:", error);
-                setStatus('error');
-            }
-        };
-
-        verifyEmail();
-    }, [key]);
+            setStatus('error');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     return (
-        <div className="flex items-center justify-center w-full min-h-[50vh]">
-            <Card className="z-10 w-full max-w-md bg-zinc-900/70 border-zinc-800 text-white shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-700 font-sans">
+        <Card className="z-10 w-full max-w-md bg-zinc-900/70 border-zinc-800 text-white shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-700">
+            <CardHeader className="text-center">
+                <CardTitle className="text-2xl font-bold tracking-tight">
+                    <span className="bg-clip-text text-transparent bg-linear-to-r from-zinc-100 to-zinc-500">
+                        Verificar E-mail
+                    </span>
+                </CardTitle>
+            </CardHeader>
 
-                <CardHeader className="text-center pb-2">
-                    <CardTitle className="text-2xl font-bold tracking-tight">
-                        <span className="bg-clip-text text-transparent bg-linear-to-r from-zinc-100 to-zinc-500">
-                            Confirmação de Conta
-                        </span>
-                    </CardTitle>
-                </CardHeader>
+            <CardContent className="space-y-6">
+                {status !== 'success' ? (
+                    <form onSubmit={onSubmit} className="space-y-4">
+                        <p className="text-center text-zinc-400 text-sm italic">
+                            Insira o código de 6 dígitos enviado ao seu e-mail.
+                        </p>
 
-                <CardContent className="flex flex-col items-center justify-center py-8 space-y-6">
+                        <Input
+                            placeholder="000000"
+                            maxLength={6}
+                            value={code}
+                            onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                            className="bg-zinc-950/50 border-zinc-800 text-center text-3xl tracking-[0.5em] font-mono h-16 focus:ring-zinc-700"
+                        />
 
-                    {/* ESTADO: CARREGANDO */}
-                    {status === 'loading' && (
-                        <div className="flex flex-col items-center gap-4 animate-pulse">
-                            <Loader2 className="h-12 w-12 text-zinc-500 animate-spin" />
-                            <p className="text-zinc-400 text-sm">Validando sua chave de acesso...</p>
-                        </div>
-                    )}
-
-                    {/* ESTADO: SUCESSO */}
-                    {status === 'success' && (
-                        <div className="flex flex-col items-center gap-4 animate-in slide-in-from-bottom-4 duration-500">
-                            <div className="rounded-full bg-emerald-500/10 p-3 ring-1 ring-emerald-500/20">
-                                <CheckCircle2 className="h-10 w-10 text-emerald-400" />
-                            </div>
-                            <div className="text-center space-y-1">
-                                <p className="text-lg font-medium text-zinc-100">E-mail Confirmado!</p>
-                                <p className="text-sm text-zinc-400 max-w-65">
-                                    Sua conta foi ativada com sucesso. Você já pode acessar a plataforma.
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ESTADO: ERRO */}
-                    {status === 'error' && (
-                        <div className="flex flex-col items-center gap-4 animate-in slide-in-from-bottom-4 duration-500">
-                            <div className="rounded-full bg-red-500/10 p-3 ring-1 ring-red-500/20">
-                                <XCircle className="h-10 w-10 text-red-400" />
-                            </div>
-                            <div className="text-center space-y-1">
-                                <p className="text-lg font-medium text-zinc-100">Link Inválido</p>
-                                <p className="text-sm text-zinc-400 max-w-65">
-                                    Não foi possível verificar seu e-mail. O link pode ter expirado ou já foi utilizado.
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                </CardContent>
-
-                <CardFooter className="flex justify-center pb-8 pt-2">
-                    {status === 'success' ? (
                         <Button
-                            asChild
-                            className="w-full bg-zinc-100 text-black hover:bg-white transition-all font-bold hover:cursor-pointer"
+                            disabled={isSubmitting || code.length < 6}
+                            className="w-full bg-zinc-100 text-black hover:bg-white transition-all font-bold h-12"
                         >
-                            <Link to="/login">Ir para Login</Link>
+                            {isSubmitting ? <Loader2 className="animate-spin" /> : "Confirmar Registro"}
                         </Button>
-                    ) : (
-                        // Se deu erro ou loading, permite voltar
-                        status !== 'loading' && (
-                            <Button
-                                asChild
-                                variant="outline"
-                                className="w-full border-zinc-700 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors"
-                            >
-                                <Link to="/login">Voltar ao Início</Link>
-                            </Button>
-                        )
-                    )}
-                </CardFooter>
 
-                <div className="pb-4 border-t border-zinc-800/50 mx-6 pt-4 text-center">
-                    <p className="text-[10px] text-zinc-600 uppercase tracking-widest">
-                        AccessHub Security
-                    </p>
-                </div>
-            </Card>
-        </div>
+                        {errorMessage && (
+                            <p className="text-red-400 text-xs text-center p-2 bg-red-500/10 rounded border border-red-500/20 animate-shake">
+                                {errorMessage}
+                            </p>
+                        )}
+                    </form>
+                ) : (
+                    <div className="flex flex-col items-center gap-4 py-6 animate-in zoom-in-95 duration-500">
+                        <div className="rounded-full bg-emerald-500/10 p-3 ring-1 ring-emerald-500/20">
+                            <CheckCircle2 className="h-12 w-12 text-emerald-400" />
+                        </div>
+                            <p className="text-center font-medium text-emerald-50 text-lg">
+                                Conta ativada com sucesso!
+                            </p>
+                        <p className="text-zinc-500 text-xs italic">Redirecionando para o painel...</p>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     );
 }

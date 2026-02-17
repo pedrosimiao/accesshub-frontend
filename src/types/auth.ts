@@ -23,6 +23,7 @@ export interface AuthContextType {
     loading: boolean;
     login: (credentials: LoginPayload) => Promise<void>;
     signup: (credentials: RegisterPayload) => Promise<void>;
+    verifyEmail: (key: string) => Promise<void>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
 }

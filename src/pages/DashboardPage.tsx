@@ -48,8 +48,6 @@ export default function DashboardPage() {
 
     if (!user) return null;
 
-    // const displayName = user.first_name || user.username || 'User';
-
     return (
         <main className="relative w-full h-screen bg-black overflow-hidden font-sans">
 
@@ -72,7 +70,7 @@ export default function DashboardPage() {
             <div className="relative z-10 flex items-center justify-center h-full">
                 <h1 className="text-4xl font-bold text-white">
                     <span className="bg-clip-text text-transparent bg-linear-to-r from-zinc-100 to-zinc-500">
-                        Hello!
+                        Welcome!
                     </span>
                 </h1>
             </div>
