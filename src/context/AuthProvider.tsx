@@ -1,6 +1,7 @@
 // src/context/AuthProvider.tsx
 
 import { useState, useEffect, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // types de erro do axios
 import { AxiosError } from 'axios';
@@ -15,6 +16,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<UserProfile | null>(null);
     // estado de carregamento
     const [loading, setLoading] = useState<boolean>(true);
+    // navegaçao entre rotas
+    const navigate = useNavigate();
+
 
     // função core de autenticação
     const refreshUser = async () => {
@@ -30,20 +34,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+
+    // inicialização (captura de token)
     useEffect(() => {
         const initialize = async () => {
             try {
-                // plantar o cookie no navegador e resolver o "CSRF Missing"
-                await api.get('/api/v1/auth/csrf/');
-                // verifica a sessão
+                const response = await api.get('/api/v1/auth/csrf/');
+
+                const token = response.data.csrfToken;
+
+                // configurando o Axios manualmente para todas as próximas chamadas
+                if (token) {
+                    api.defaults.headers.common['X-CSRFToken'] = token;
+                    console.log("Header X-CSRFToken configurado.");
+                }
+
                 await refreshUser();
             } catch (error) {
-                console.error("Falha na inicialização de segurança:", error);
+                console.error("Falha na inicialização:", error);
                 setUser(null);
                 setLoading(false);
             }
         };
-
         initialize();
     }, []);
 
@@ -52,15 +64,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const login = async (credentials: LoginPayload) => {
         try {
             await api.post('/api/v1/auth/login/', credentials);
+
+            // refreshing  token CSRF (Session Rotation)
+            const response = await api.get('/api/v1/auth/csrf/');
+            if (response.data.csrfToken) {
+                api.defaults.headers.common['X-CSRFToken'] = response.data.csrfToken;
+            }
+
             await refreshUser();
+            navigate('/dashboard');
         } catch (err: unknown) {
-            if (err instanceof AxiosError) {
-                // Se o backend retornar 403, lança exceção customizada
-                if (err.response?.status === 403) {
-                    throw new Error("USER_INACTIVE");
-                }
+            if (err instanceof AxiosError && err.response?.status === 403) {
+                throw new Error("USER_INACTIVE");
             }
             throw err;
+        }
+    };
+
+
+    // Logout
+    const logout = async () => {
+        try {
+            // post cabeçalho X-CSRFToken, evitar 403
+            await api.post('/api/v1/auth/logout/');
+            console.log("Logout backend realizado com sucesso.");
+        } catch (error) {
+            console.error("Erro ao deslogar no servidor:", error);
+        } finally {
+            // limpeza de estado
+            setUser(null);
+            delete api.defaults.headers.common['X-CSRFToken'];
+
+            navigate('/login');
         }
     };
 
@@ -68,10 +103,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Verify Email
     const verifyEmail = async (otpCode: string) => {
         try {
-            // Ajustado para o seu novo endpoint manual e campo 'code'
+            // ajustado para endpoint manual e campo 'code'
             await api.post('/api/v1/auth/verify-email/', { code: otpCode });
 
-            // Após ativar, limpamos o usuário para garantir que ele faça o login manual
+            // user ativo -> limpar user para garantir login manual
             setUser(null);
         } catch (err: unknown) {
             const error = err as AxiosError<DjangoAuthError>;
@@ -100,20 +135,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const error = err as AxiosError<DjangoAuthError>;
             console.error("Erro no Registro:", error.response?.data);
             throw error;
-        }
-    };
-
-
-
-    // Logout
-    // src/context/AuthProvider.tsx
-
-    const logout = async () => {
-        try {
-            await api.post('/api/v1/auth/logout/');
-        } finally {
-            setUser(null);
-            window.location.href = '/login';
         }
     };
 
