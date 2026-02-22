@@ -139,8 +139,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
 
+    // reenvio de código OTP
+    const resendOTP = async (email: string) => {
+        try {
+            await api.post('/api/v1/auth/resend-otp/', { email });
+        } catch (err) {
+            console.error("Erro ao reenviar OTP:", err);
+            throw err;
+        }
+    };
+
+    // esqueci minha senha
+    const requestPasswordReset = async (email: string) => {
+        try {
+            await api.post('/api/v1/auth/password/reset/', { email });
+        } catch (err) {
+            console.error("Erro ao solicitar reset de senha:", err);
+            throw err;
+        }
+    };
+
+    const confirmPasswordReset = async (token: string, password1: string, password2: string) => {
+        try {
+            // padrão do Django Rest Auth/AllAuth
+            await api.post('/api/v1/auth/password/reset/confirm/', {
+                token: token,
+                password1: password1,
+                password2: password2
+            });
+        } catch (err) {
+            console.error("Erro ao confirmar reset de senha:", err);
+            throw err;
+        }
+    };
+
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, signup, logout, refreshUser, verifyEmail }}>
+        <AuthContext.Provider value={{ 
+            user, loading, login, signup, logout, 
+            refreshUser, verifyEmail, resendOTP, 
+            requestPasswordReset, confirmPasswordReset }}>
             {children}
         </AuthContext.Provider>
     );

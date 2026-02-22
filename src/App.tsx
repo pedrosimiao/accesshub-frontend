@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ConfirmEmailPage from './pages/ConfirmEmailPage';
+import ConfirmPasswordResetPage from './pages/ConfirmPasswordResetPage';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -54,6 +55,12 @@ function App() {
       <Route path="/confirm-email" element={
         <PublicRoute>
           <ConfirmEmailPage />
+        </PublicRoute>
+      } />
+
+      <Route path="/password-reset-confirm" element={
+        <PublicRoute>
+          <ConfirmPasswordResetPage />
         </PublicRoute>
       } />
 
