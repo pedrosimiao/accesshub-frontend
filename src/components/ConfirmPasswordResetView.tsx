@@ -1,5 +1,7 @@
+// src/components/ConfirmPasswordResetView.tsx
+
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,7 +16,6 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 
 const resetSchema = z.object({
-    token: z.string().min(1, 'O token é obrigatório'),
     password: z.string().min(6, 'A senha deve ter no mínimo 6 caracteres'),
     confirmPassword: z.string().min(1, 'Confirme sua senha'),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -25,8 +26,11 @@ const resetSchema = z.object({
 type ResetFormFields = z.infer<typeof resetSchema>;
 
 export function ConfirmPasswordResetView() {
-    const navigate = useNavigate();
+    // captura dos códigos criptográficos direto da URL
+    const { uid, token } = useParams<{ uid: string; token: string }>();
+
     const { confirmPasswordReset } = useAuth();
+    const navigate = useNavigate();
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [status, setStatus] = useState<'idle' | 'success'>('idle');
@@ -37,16 +41,28 @@ export function ConfirmPasswordResetView() {
     });
 
     const onSubmit = async (data: ResetFormFields) => {
+        // bloqueio em caso de acesso sem os códigos (uid & token) na URL
+        if (!uid || !token) {
+            setServerError("Link de recuperação inválido ou incompleto.");
+            return;
+        }
+
         setIsSubmitting(true);
         setServerError(null);
 
         try {
-            await confirmPasswordReset(data.token, data.password, data.confirmPassword);
+            // envio de dados da URL + senhas digitadas para a API
+            await confirmPasswordReset(
+                uid,
+                token,
+                data.password,
+                data.confirmPassword
+            );
             setStatus('success');
             setTimeout(() => navigate('/login'), 3000);
         } catch (err: unknown) {
             if (err instanceof AxiosError) {
-                setServerError(err.response?.data?.detail || "Token inválido ou erro no servidor.");
+                setServerError(err.response?.data?.detail || "Erro ao processar alteração.");
             } else {
                 setServerError("Ocorreu um erro inesperado.");
             }
@@ -60,45 +76,41 @@ export function ConfirmPasswordResetView() {
             <CardHeader className="text-center">
                 <CardTitle className="text-2xl font-bold tracking-tight">
                     <span className="bg-clip-text text-transparent bg-linear-to-r from-zinc-100 to-zinc-500">
-                        Definir Nova Senha
+                        Nova Senha
                     </span>
                 </CardTitle>
                 <CardDescription className="text-zinc-500 mt-2 italic">
-                    Insira o código enviado e sua nova senha
+                    Defina sua nova credencial de acesso
                 </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-6">
                 {status !== 'success' ? (
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="token" className="text-zinc-400">Token</Label>
-                            <Input
-                                id="token"
-                                {...register('token')}
-                                placeholder="Token de segurança"
-                                className="bg-zinc-950/50 border-zinc-800 text-center font-mono focus:ring-zinc-700 text-white"
-                            />
-                            {errors.token && <p className="text-red-500 text-[11px]">{errors.token.message}</p>}
-                        </div>
+                        {/* 
+                        UID e TOKEN "escondidos" na URL, 
+                        não é preciso inputs para eles 
+                        */}
 
                         <div className="space-y-2">
-                            <Label htmlFor="password" size-sm className="text-zinc-400">Nova Senha</Label>
+                            <Label htmlFor="password">Nova Senha</Label>
                             <Input
                                 id="password"
                                 type="password"
                                 {...register('password')}
+                                placeholder="••••••••"
                                 className="bg-zinc-950/50 border-zinc-800 focus:ring-zinc-700 text-white"
                             />
                             {errors.password && <p className="text-red-500 text-[11px]">{errors.password.message}</p>}
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="confirmPassword" size-sm className="text-zinc-400">Confirmar Senha</Label>
+                            <Label htmlFor="confirmPassword">Confirmar Senha</Label>
                             <Input
                                 id="confirmPassword"
                                 type="password"
                                 {...register('confirmPassword')}
+                                placeholder="••••••••"
                                 className="bg-zinc-950/50 border-zinc-800 focus:ring-zinc-700 text-white"
                             />
                             {errors.confirmPassword && <p className="text-red-500 text-[11px]">{errors.confirmPassword.message}</p>}
@@ -107,9 +119,9 @@ export function ConfirmPasswordResetView() {
                         <Button
                             type="submit"
                             disabled={isSubmitting}
-                            className="w-full bg-zinc-100 text-black hover:bg-white transition-all font-bold h-12 mt-2"
+                            className="w-full bg-zinc-100 text-black hover:bg-white transition-all font-bold h-12 mt-2 hover:cursor-pointer"
                         >
-                            {isSubmitting ? <Loader2 className="animate-spin" /> : "Redefinir Senha"}
+                            {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : "Salvar Nova Senha"}
                         </Button>
 
                         {serverError && (
@@ -124,9 +136,9 @@ export function ConfirmPasswordResetView() {
                             <CheckCircle2 className="h-12 w-12 text-emerald-400" />
                         </div>
                         <p className="text-center font-medium text-emerald-50 text-lg">
-                            Senha atualizada!
+                                Senha atualizada com sucesso!
                         </p>
-                        <p className="text-zinc-500 text-xs italic">Você já pode fazer login.</p>
+                            <p className="text-zinc-500 text-xs italic">Redirecionando para o login...</p>
                     </div>
                 )}
             </CardContent>

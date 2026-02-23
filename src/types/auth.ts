@@ -26,7 +26,7 @@ export interface AuthContextType {
     verifyEmail: (key: string) => Promise<void>;
     resendOTP: (email: string) => Promise<void>;
     requestPasswordReset: (email: string) => Promise<void>;
-    confirmPasswordReset: (token: string, password1: string, password2: string) => Promise<void>;
+    confirmPasswordReset: (uid: string, token: string, password1: string, password2: string) => Promise<void>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
 }

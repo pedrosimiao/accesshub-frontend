@@ -9,13 +9,21 @@ import { AxiosError } from 'axios';
 import api from '../api/axios';
 
 import { AuthContext } from './AuthContext';
-import type { UserProfile, LoginPayload, RegisterPayload, DjangoAuthError } from '../types/auth';
+
+import type {
+    UserProfile,
+    LoginPayload,
+    RegisterPayload,
+    DjangoAuthError
+} from '../types/auth';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // estado do current user
     const [user, setUser] = useState<UserProfile | null>(null);
+
     // estado de carregamento
     const [loading, setLoading] = useState<boolean>(true);
+
     // navegaçao entre rotas
     const navigate = useNavigate();
 
@@ -26,9 +34,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // consulta o user atual ao endpoint de autenticação no backend
             const response = await api.get<UserProfile>('/api/v1/auth/user/');
             setUser(response.data);
+
         } catch {
             // captura erro (401) caso não haja user logado
             setUser(null);
+
         } finally {
             setLoading(false);
         }
@@ -50,6 +60,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 }
 
                 await refreshUser();
+
             } catch (error) {
                 console.error("Falha na inicialização:", error);
                 setUser(null);
@@ -65,7 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
             await api.post('/api/v1/auth/login/', credentials);
 
-            // refreshing  token CSRF (Session Rotation)
+            // refreshing token CSRF (Session Rotation)
             const response = await api.get('/api/v1/auth/csrf/');
             if (response.data.csrfToken) {
                 api.defaults.headers.common['X-CSRFToken'] = response.data.csrfToken;
@@ -73,6 +84,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             await refreshUser();
             navigate('/dashboard');
+
         } catch (err: unknown) {
             if (err instanceof AxiosError && err.response?.status === 403) {
                 throw new Error("USER_INACTIVE");
@@ -85,11 +97,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Logout
     const logout = async () => {
         try {
-            // post cabeçalho X-CSRFToken, evitar 403
+            // post cabeçalho X-CSRFToken, evitar status 403
             await api.post('/api/v1/auth/logout/');
             console.log("Logout backend realizado com sucesso.");
+
         } catch (error) {
             console.error("Erro ao deslogar no servidor:", error);
+
         } finally {
             // limpeza de estado
             setUser(null);
@@ -100,7 +114,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
 
-    // Verify Email
+    // Verificação via Email (MFA)
     const verifyEmail = async (otpCode: string) => {
         try {
             // ajustado para endpoint manual e campo 'code'
@@ -108,6 +122,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             // user ativo -> limpar user para garantir login manual
             setUser(null);
+
         } catch (err: unknown) {
             const error = err as AxiosError<DjangoAuthError>;
             console.error("Erro na Verificação OTP:", error.response?.data);
@@ -126,7 +141,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
 
         try {
-            // chamada de POST no endpoint de registro via axios.ts (CSRF e BaseURL automáticos)
+            // POST no endpoint de registr
+            // (CSRF e BaseURL automáticos)
             await api.post('/api/v1/auth/registration/', payload);
 
             setUser(null);
@@ -139,15 +155,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
 
+
     // reenvio de código OTP
     const resendOTP = async (email: string) => {
         try {
             await api.post('/api/v1/auth/resend-otp/', { email });
+
         } catch (err) {
             console.error("Erro ao reenviar OTP:", err);
             throw err;
         }
     };
+
+
 
     // esqueci minha senha
     const requestPasswordReset = async (email: string) => {
@@ -159,10 +179,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    const confirmPasswordReset = async (token: string, password1: string, password2: string) => {
+
+
+    // Confirmar nova senha 
+    // envio do uid e token recebidos da View junto com as senhas
+    const confirmPasswordReset = async (uid: string, token: string, password1: string, password2: string) => {
         try {
             // padrão do Django Rest Auth/AllAuth
             await api.post('/api/v1/auth/password/reset/confirm/', {
+                uid: uid,
                 token: token,
                 password1: password1,
                 password2: password2

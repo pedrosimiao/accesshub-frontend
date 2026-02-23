@@ -38,7 +38,6 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 
 function App() {
   return (
-    // Removido o <BrowserRouter> daqui, pois já está no main.tsx
     <Routes>
       <Route path="/login" element={
         <PublicRoute>
@@ -58,7 +57,8 @@ function App() {
         </PublicRoute>
       } />
 
-      <Route path="/password-reset-confirm" element={
+      {/* parâmetros uid e token são lidos do link do e-mail */}
+      <Route path="/password-reset-confirm/:uid/:token" element={
         <PublicRoute>
           <ConfirmPasswordResetPage />
         </PublicRoute>
